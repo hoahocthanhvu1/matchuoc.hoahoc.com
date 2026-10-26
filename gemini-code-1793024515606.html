@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mạt Chược Hóa Học - v24.0 Full Chemistry Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            background-color: #1a120b;
+            background-image: radial-gradient(circle, #2b1d12 0%, #0f0a06 100%);
+            color: #f3f4f6;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            min-height: 100vh;
+        }
+
+        .wooden-panel {
+            background: #261910;
+            border: 2px solid #422d1d;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        .mahjong-tile {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            border: 2px solid #d97706;
+            border-bottom: 4px solid #b45309;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            color: #1f2937;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+        .mahjong-tile:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.4);
+        }
+        .mahjong-tile.selected {
+            transform: translateY(-10px);
+            background: linear-gradient(135deg, #fef08a, #fde047);
+            border-color: #ca8a04;
+            box-shadow: 0 0 15px #eab308;
+        }
+
+        .action-card {
+            background: linear-gradient(135deg, #4c1d95, #2e1065);
+            border: 2px solid #7c3aed;
+            border-bottom: 4px solid #5b21b6;
+            color: #f3e8ff;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .action-card:hover { transform: translateY(-4px); }
+        .action-card.selected {
+            transform: translateY(-10px);
+            border-color: #f472b6;
+            box-shadow: 0 0 15px #ec4899;
+            background: linear-gradient(135deg, #831843, #500724);
+        }
+    </style>
+</head>
+<body class="p-3 sm:p-6 flex flex-col items-center justify-between">
+
+    <div class="w-full max-w-6xl space-y-4">
+        
+        <!-- Header -->
+        <div class="wooden-panel p-4 rounded-2xl flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">🀄</span>
+                <div>
+                    <h1 class="font-extrabold text-base tracking-wider text-amber-400">MẠT CHƯỢC HÓA HỌC v24.0 FULL ENGINE</h1>
+                    <p class="text-xs text-amber-200/60">Hỗ trợ toàn bộ nguyên tố từ H đến Hs • Ghép muối, clorua, sunfat, cacbonat tự do</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="toggleHandbook()" class="px-3.5 py-2 bg-amber-900/60 hover:bg-amber-800 text-amber-200 rounded-xl text-xs font-semibold transition-all cursor-pointer">📚 Tra Cứu Hợp Chất</button>
+                <button onclick="resetGame()" class="px-3.5 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-xl text-xs font-semibold transition-all cursor-pointer">🔄 Ván Mới</button>
+            </div>
+        </div>
+
+        <!-- Bàn chơi chính -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            
+            <div class="lg:col-span-2 space-y-4">
+                
+                <!-- Bãi rác & Nọc -->
+                <div class="wooden-panel p-5 rounded-2xl flex items-center justify-around">
+                    
+                    <div class="text-center">
+                        <p class="text-xs text-amber-200/70 mb-2 font-medium">Bãi Rác Trung Tâm</p>
+                        <div id="trash-box" class="w-20 h-28 rounded-xl border-2 border-dashed border-amber-800/60 bg-stone-900/50 flex flex-col items-center justify-center">
+                            <span class="text-2xl mb-1">🗑️</span>
+                            <span class="text-[10px] text-stone-500">Trống</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-3 items-center">
+                        <button id="btn-draw" onclick="drawCard()" class="px-6 py-3.5 bg-amber-700 hover:bg-amber-600 text-white rounded-xl text-xs font-extrabold shadow-lg cursor-pointer transition-all active:scale-95">
+                            📥 BỐC NỌC (Còn: <span id="deck-count" class="text-amber-200 text-sm">1514</span> lá)
+                        </button>
+                        <button id="btn-an" onclick="anBaiRac()" disabled class="px-5 py-2.5 bg-stone-800 text-stone-500 rounded-xl text-xs font-bold border border-stone-700 cursor-not-allowed">
+                            🍴 Ăn Bài Rác (Cần Thẻ KẾT HỢP)
+                        </button>
+                    </div>
+
+                    <div class="text-center">
+                        <p class="text-xs text-amber-200/70 mb-2 font-medium">Tiến Trình Ù</p>
+                        <div class="bg-stone-900/80 border border-stone-800 p-3 rounded-xl text-xs space-y-1.5 w-32 text-left">
+                            <p class="text-emerald-400 font-bold">Liên kết: <span id="bond-count">0/10</span></p>
+                            <p class="text-cyan-400 font-bold">Electron: <span id="e-count">2/10</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phòng thí nghiệm -->
+                <div class="wooden-panel p-5 rounded-2xl">
+                    <h2 class="font-semibold text-amber-300 text-xs mb-3 flex items-center gap-2">
+                        <span>🧪</span> Phòng Thí Nghiệm (Hợp chất đã hạ)
+                    </h2>
+                    <div id="slots-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-2.5"></div>
+                </div>
+
+                <!-- Tay bài -->
+                <div class="wooden-panel p-5 rounded-2xl space-y-3">
+                    <div>
+                        <p class="text-xs text-amber-200/70 mb-1.5 font-medium">🖐️ Bài Nguyên Tố Trên Tay (<span id="hand-count" class="text-amber-400 font-bold">14</span> lá):</p>
+                        <div id="hand-elements" class="flex flex-wrap gap-2 min-h-[70px] p-2.5 bg-stone-900/60 rounded-xl border border-stone-800"></div>
+                    </div>
+
+                    <div>
+                        <p class="text-xs text-amber-200/70 mb-1.5 font-medium">🎴 Thẻ Hành Động Trên Tay (<span id="act-hand-count" class="text-purple-400 font-bold">2</span> lá):</p>
+                        <div id="hand-actions" class="flex flex-wrap gap-2 min-h-[45px]"></div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 pt-2 border-t border-stone-800">
+                        <button onclick="executeElectrolysis()" class="px-3.5 py-2 bg-purple-800 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold cursor-pointer">🔋 Điện Ly (+2 e⁻)</button>
+                        <button onclick="executeDecompose()" class="px-3.5 py-2 bg-amber-800 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold cursor-pointer">🔥 Phân Rã</button>
+                        <button onclick="executeDisplacement()" class="px-3.5 py-2 bg-blue-800 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer">⚡ Thế Nguyên Tố</button>
+                        <button onclick="executeDiscard()" class="px-3.5 py-2 bg-rose-900 hover:bg-rose-800 text-rose-200 rounded-lg text-xs font-semibold cursor-pointer">🗑️ Đánh Rác (Đổi lượt)</button>
+                        <button onclick="executeWin()" class="px-3.5 py-2 bg-yellow-500 hover:bg-yellow-400 text-stone-950 rounded-lg text-xs font-bold cursor-pointer ml-auto">🏆 Ù HÓA HỌC</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Đối thủ & Log -->
+            <div class="space-y-4">
+                <div class="wooden-panel p-4 rounded-2xl">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="font-semibold text-rose-300 text-xs">🤖 Phòng Thí Nghiệm Đối Thủ</h2>
+                        <span id="opp-bond-count" class="text-xs text-rose-400 font-semibold">0/10</span>
+                    </div>
+                    <div id="opponent-slots" class="grid grid-cols-2 gap-2"></div>
+                </div>
+
+                <div class="wooden-panel p-4 rounded-2xl">
+                    <h3 class="text-xs font-semibold text-amber-300 mb-2">📜 Nhật Ký Trận Đấu</h3>
+                    <div id="game-log" class="h-56 overflow-y-auto space-y-1 font-mono text-[11px] text-stone-300 p-2 bg-stone-950/80 rounded-xl border border-stone-800"></div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Modal tra cứu -->
+    <div id="handbook-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="wooden-panel w-full max-w-lg max-h-[75vh] rounded-2xl p-5 flex flex-col space-y-3">
+            <div class="flex justify-between items-center border-b border-stone-800 pb-2">
+                <h3 class="font-bold text-amber-400 text-sm">📚 Tra Cứu Công Thức Hợp Chất</h3>
+                <button onclick="toggleHandbook()" class="text-stone-400 hover:text-white font-bold">✕</button>
+            </div>
+            <div id="handbook-content" class="overflow-y-auto space-y-1.5 text-xs font-mono text-stone-300 pr-1"></div>
+        </div>
+    </div>
+
+    <script>
+        function shuffleDeck(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function removeElementsFromHand(hand, elementsToRemove) {
+            let tempHand = [...hand];
+            for (let el of elementsToRemove) {
+                let idx = tempHand.indexOf(el);
+                if (idx === -1) return false;
+                tempHand.splice(idx, 1);
+            }
+            elementsToRemove.forEach(el => {
+                let idx = hand.indexOf(el);
+                hand.splice(idx, 1);
+            });
+            return true;
+        }
+
+        const ALL_108_ELEMENTS = [
+            "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", 
+            "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", 
+            "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", 
+            "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", 
+            "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", 
+            "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", 
+            "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", 
+            "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", 
+            "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", 
+            "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", 
+            "Md", "No", "Lr", "Rf", "Db", "Sg", "Bh", "Hs"
+        ];
+
+        const BASE_COMPOUNDS = {
+            "H2O": {H:2, O:1}, "CO2": {C:1, O:2}, "SO2": {S:1, O:2}, "SO3": {S:1, O:3},
+            "NaCl": {Na:1, Cl:1}, "HCl": {H:1, Cl:1}, "NaOH": {Na:1, O:1, H:1}, "NH3": {N:1, H:3},
+            "CH4": {C:1, H:4}, "CaCO3": {Ca:1, C:1, O:3}, "H2SO4": {H:2, S:1, O:4}, "HNO3": {H:1, N:1, O:3},
+            "FeCl3": {Fe:1, Cl:3}, "CaO": {Ca:1, O:1}, "O2": {O:2}, "H2": {H:2}, "N2": {N:2},
+            "Cl2": {Cl:2}, "F2": {F:2}, "Br2": {Br:2}, "I2": {I:2}, "MgO": {Mg:1, O:1},
+            "CuSO4": {Cu:1, S:1, O:4}, "FeSO4": {Fe:1, S:1, O:4}, "ZnSO4": {Zn:1, S:1, O:4}, "AlCl3": {Al:1, Cl:3}
+        };
+
+        // CỖ MÁY HÓA HỌC ĐỘNG NHẬN DIỆN 5000+ TỔ HỢP
+        function checkCompoundValidity(counts) {
+            let keys = Object.keys(counts);
+
+            // 1. Kiểm tra kho mẫu chuẩn
+            for (let f in BASE_COMPOUNDS) {
+                let req = BASE_COMPOUNDS[f];
+                if (keys.length !== Object.keys(req).length) continue;
+                let match = true;
+                for (let e in req) {
+                    if (counts[e] !== req[e]) { match = false; break; }
+                }
+                if (match) return f;
+            }
+
+            // 2. Đơn chất khí / đa nguyên tử (X2, X3, X4, X8)
+            if (keys.length === 1) {
+                let el = keys[0];
+                let amt = counts[el];
+                if (amt >= 2 && amt <= 8) return `${el}${amt}`;
+            }
+
+            // 3. Oxit (MxOy - Bất kỳ nguyên tố nào kết hợp với O)
+            if (keys.length === 2 && counts['O']) {
+                let metal = keys.find(k => k !== 'O');
+                let oCount = counts['O'];
+                let mCount = counts[metal];
+                if (metal && oCount >= 1 && oCount <= 7 && mCount >= 1 && mCount <= 3) {
+                    return `${metal}${mCount > 1 ? mCount : ''}O${oCount > 1 ? oCount : ''}`;
+                }
+            }
+
+            // 4. Clorua, Bromua, Iotua, Fflorua (Halogenua: M + Cl/Br/I/F)
+            const halogens = ['Cl', 'Br', 'I', 'F'];
+            for (let h of halogens) {
+                if (counts[h] && keys.length === 2) {
+                    let metal = keys.find(k => k !== h);
+                    let hCount = counts[h];
+                    let mCount = counts[metal];
+                    if (metal && mCount === 1 && hCount >= 1 && hCount <= 4) {
+                        return `${metal}${h}${hCount > 1 ? hCount : ''}`;
+                    }
+                }
+            }
+
+            // 5. Sunfat (Metal + 1 S + 4 O) => ví dụ MgSO4, CaSO4, ZnSO4, CuSO4...
+            if (counts['S'] === 1 && counts['O'] === 4 && keys.length === 3) {
+                let metal = keys.find(k => k !== 'S' && k !== 'O');
+                let mCount = counts[metal];
+                if (metal && mCount === 1) {
+                    return `${metal}SO4`;
+                }
+            }
+
+            // 6. Cacbonat (Metal + 1 C + 3 O) => ví dụ CaCO3, MgCO3...
+            if (counts['C'] === 1 && counts['O'] === 3 && keys.length === 3) {
+                let metal = keys.find(k => k !== 'C' && k !== 'O');
+                let mCount = counts[metal];
+                if (metal) {
+                    return `${metal}${mCount > 1 ? mCount : ''}CO3`;
+                }
+            }
+
+            // 7. Hiđroxit (Metal + x O + x H) => ví dụ Mg(OH)2, Ca(OH)2...
+            if (counts['O'] && counts['H'] && counts['O'] === counts['H'] && keys.length === 3) {
+                let metal = keys.find(k => k !== 'O' && k !== 'H');
+                let mCount = counts[metal];
+                let ohCount = counts['O'];
+                if (metal && mCount === 1 && ohCount >= 1 && ohCount <= 3) {
+                    return ohCount === 1 ? `${metal}OH` : `${metal}(OH)${ohCount}`;
+                }
+            }
+
+            return null;
+        }
+
+        let singleDeck = [];
+        let playerElements = [], playerActions = [], createdBonds = [];
+        let electronCount = 2, trashCard = null;
+        let opponentElements = [], opponentActions = [], opponentBonds = [];
+        let selectedIndices = [], selectedActionIdx = null, selectedSlotIndex = null, selectedOppSlotIndex = null;
+        let turnState = 'player_draw';
+        let currentGameSession = 0;
+
+        function log(msg, col="text-stone-300") {
+            const lg = document.getElementById("game-log");
+            if(lg) { 
+                lg.innerHTML += `<p class="${col}">> ${msg}</p>`;
+                const lines = lg.getElementsByTagName('p');
+                if (lines.length > 150) lg.removeChild(lines[0]);
+                lg.scrollTop = lg.scrollHeight; 
+            }
+        }
+
+        function initGame() {
+            currentGameSession++;
+            singleDeck = [];
+
+            ALL_108_ELEMENTS.forEach((el, index) => {
+                let cardCount = 15;
+                if (index < 20) cardCount = 25;       
+                else if (index >= 50) cardCount = 8;    
+                else cardCount = 15;                    
+
+                for (let c = 0; c < cardCount; c++) {
+                    singleDeck.push({ type: 'element', value: el });
+                }
+            });
+
+            const actionTypes = ["KẾT HỢP", "ĐIỆN LY", "PHÂN RÃ", "PHẢN ỨNG", "THẾ NGUYÊN TỐ"];
+            actionTypes.forEach(act => {
+                for (let i = 0; i < 20; i++) {
+                    singleDeck.push({ type: 'action', value: act });
+                }
+            });
+
+            shuffleDeck(singleDeck);
+
+            playerElements = []; playerActions = [];
+            opponentElements = []; opponentActions = [];
+
+            while (playerElements.length < 14 || playerActions.length < 2) {
+                let card = singleDeck.pop();
+                if (card.type === 'element' && playerElements.length < 14) playerElements.push(card.value);
+                else if (card.type === 'action' && playerActions.length < 2) playerActions.push(card.value);
+                else singleDeck.unshift(card);
+            }
+
+            while (opponentElements.length < 14 || opponentActions.length < 2) {
+                let card = singleDeck.pop();
+                if (card.type === 'element' && opponentElements.length < 14) opponentElements.push(card.value);
+                else if (card.type === 'action' && opponentActions.length < 2) opponentActions.push(card.value);
+                else singleDeck.unshift(card);
+            }
+
+            createdBonds = []; opponentBonds = []; electronCount = 2; trashCard = null;
+            selectedIndices = []; selectedActionIdx = null; selectedSlotIndex = null; selectedOppSlotIndex = null;
+            turnState = 'player_draw';
+
+            const lg = document.getElementById("game-log");
+            if(lg) lg.innerHTML = "";
+
+            log("Ván mới đã bắt đầu! Đã nạp cỗ máy Full Chemistry Engine 5000+ hợp chất.", "text-amber-400 font-bold");
+            render();
+            buildHandbook();
+        }
+
+        function render() {
+            const grid = document.getElementById("slots-grid");
+            grid.innerHTML = "";
+            for(let i=0; i<10; i++) {
+                if(createdBonds[i]) {
+                    const isSelected = selectedSlotIndex === i;
+                    grid.innerHTML += `<div onclick="selectedSlotIndex=(selectedSlotIndex===${i})?null:${i}; render();" class="h-14 rounded-xl border border-amber-600 bg-amber-950/60 flex flex-col items-center justify-center p-1 cursor-pointer ${isSelected?'ring-2 ring-amber-400':''}"><span class="text-xs font-bold text-amber-200">${createdBonds[i]}</span><span class="text-[9px] text-amber-400">Ô ${i+1}</span></div>`;
+                } else {
+                    grid.innerHTML += `<div class="h-14 rounded-xl border border-dashed border-stone-800 bg-stone-900/40 flex items-center justify-center text-[10px] text-stone-600">Ô ${i+1}</div>`;
+                }
+            }
+
+            const oppGrid = document.getElementById("opponent-slots");
+            oppGrid.innerHTML = "";
+            for(let i=0; i<10; i++) {
+                if(opponentBonds[i]) {
+                    const isSelected = selectedOppSlotIndex === i;
+                    oppGrid.innerHTML += `<div onclick="selectedOppSlotIndex=(selectedOppSlotIndex===${i})?null:${i}; render();" class="h-12 rounded-lg border border-rose-900/60 bg-rose-950/30 flex items-center justify-center cursor-pointer ${isSelected?'ring-2 ring-purple-400':''}"><span class="text-xs font-bold text-rose-300">${opponentBonds[i]}</span></div>`;
+                } else {
+                    oppGrid.innerHTML += `<div class="h-12 rounded-lg border border-dashed border-stone-800 bg-stone-900/30 flex items-center justify-center text-[10px] text-stone-600">Trống</div>`;
+                }
+            }
+
+            const trBox = document.getElementById("trash-box");
+            if(trashCard) {
+                trBox.innerHTML = `<span class="text-2xl font-bold text-amber-400 mb-0.5">${trashCard}</span><span class="text-[9px] text-amber-500 font-medium">Rác</span>`;
+            } else {
+                trBox.innerHTML = `<span class="text-2xl mb-1">🗑️</span><span class="text-[10px] text-stone-500">Trống</span>`;
+            }
+
+            document.getElementById("hand-elements").innerHTML = playerElements.map((el, i) => `
+                <button onclick="toggleSelectEl(${i})" class="mahjong-tile w-10 h-14 rounded-lg font-bold text-xs flex flex-col items-center justify-center ${selectedIndices.includes(i)?'selected':''}">
+                    <span>${el}</span>
+                </button>
+            `).join("");
+
+            document.getElementById("hand-actions").innerHTML = playerActions.map((act, i) => `
+                <button onclick="selectedActionIdx=(selectedActionIdx===${i})?null:${i}; render();" class="action-card px-3 py-1.5 rounded-lg text-xs font-semibold ${selectedActionIdx===i?'selected':''}">
+                    Thẻ: ${act}
+                </button>
+            `).join("");
+
+            document.getElementById("deck-count").innerText = singleDeck.length;
+            document.getElementById("hand-count").innerText = playerElements.length;
+            document.getElementById("act-hand-count").innerText = playerActions.length;
+            document.getElementById("bond-count").innerText = `${createdBonds.length}/10`;
+            document.getElementById("opp-bond-count").innerText = `${opponentBonds.length}/10`;
+            document.getElementById("e-count").innerText = `${electronCount}/10`;
+
+            const btnDraw = document.getElementById("btn-draw");
+            if (turnState === 'player_draw') {
+                btnDraw.disabled = false;
+                btnDraw.className = "px-6 py-3.5 bg-amber-700 hover:bg-amber-600 text-white rounded-xl text-xs font-extrabold shadow-lg cursor-pointer transition-all active:scale-95";
+            } else {
+                btnDraw.disabled = true;
+                btnDraw.className = "px-6 py-3.5 bg-stone-800 text-stone-500 rounded-xl text-xs font-extrabold border border-stone-700 cursor-not-allowed";
+            }
+
+            const btnAn = document.getElementById("btn-an");
+            if(turnState === 'player_draw' && trashCard && playerActions.includes("KẾT HỢP")) {
+                btnAn.disabled = false;
+                btnAn.className = "px-5 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow cursor-pointer transition-all";
+            } else {
+                btnAn.disabled = true;
+                btnAn.className = "px-5 py-2.5 bg-stone-800 text-stone-500 rounded-xl text-xs font-bold border border-stone-700 cursor-not-allowed";
+            }
+        }
+
+        function toggleSelectEl(i) {
+            if (turnState === 'game_over') return;
+            if(selectedIndices.includes(i)) selectedIndices = selectedIndices.filter(x => x!==i);
+            else selectedIndices.push(i);
+            render();
+        }
+
+        function drawCard() {
+            if (turnState !== 'player_draw') return;
+            if (singleDeck.length === 0) { 
+                turnState = 'game_over';
+                log("Nọc đã cạn hoàn toàn! Trận đấu hòa.", "text-rose-400");
+                alert("Hết bài trong nọc! Trận đấu kết thúc.");
+                render();
+                return; 
+            }
+
+            let card = singleDeck.pop();
+            if (card.type === 'element') {
+                playerElements.push(card.value);
+                log(`Bạn bốc 1 lá nguyên tố: [${card.value}]`, "text-amber-300");
+            } else {
+                playerActions.push(card.value);
+                log(`🎴 Bạn bốc trúng Thẻ Hành Động: [${card.value}]`, "text-purple-300 font-bold");
+            }
+
+            turnState = 'player_action';
+            render();
+        }
+
+        function anBaiRac() {
+            if (turnState !== 'player_draw' || !trashCard) return;
+            const actIdx = playerActions.indexOf("KẾT HỢP");
+            if (actIdx === -1) { log("Cần Thẻ [KẾT HỢP] trên tay để ăn bài rác!", "text-rose-400"); return; }
+            if (selectedIndices.length === 0) { log("Chọn các nguyên tố trên tay kết hợp với rác!", "text-amber-400"); return; }
+
+            let chosenElements = selectedIndices.map(i => playerElements[i]);
+            let testPool = [...chosenElements, trashCard];
+            let counts = {}; 
+            testPool.forEach(e => counts[e] = (counts[e] || 0) + 1);
+
+            let matchedCompound = checkCompoundValidity(counts);
+
+            if (matchedCompound && createdBonds.length < 10) {
+                let removed = removeElementsFromHand(playerElements, chosenElements);
+                if (removed) {
+                    playerActions.splice(actIdx, 1);
+                    createdBonds.push(matchedCompound);
+                    log(`🍴 Ăn rác thành công! Tạo ra hợp chất: ${matchedCompound}`, "text-emerald-400 font-bold");
+                    trashCard = null; selectedIndices = []; 
+                    turnState = 'player_action';
+                    render();
+                    return;
+                }
+            }
+            log("Tổ hợp nguyên tố không tạo ra hợp chất hợp lệ!", "text-rose-400");
+        }
+
+        function executeElectrolysis() {
+            if (turnState !== 'player_action' || selectedActionIdx === null || playerActions[selectedActionIdx] !== "ĐIỆN LY" || selectedSlotIndex === null) return;
+            const comp = createdBonds[selectedSlotIndex];
+            if (!comp) return;
+
+            let req = BASE_COMPOUNDS[comp] || {H:2, O:1};
+            for (let e in req) { for (let c=0; c<req[e]; c++) playerElements.push(e); }
+            createdBonds.splice(selectedSlotIndex, 1);
+            playerActions.splice(selectedActionIdx, 1);
+            electronCount = Math.min(10, electronCount + 2);
+
+            selectedSlotIndex = null; selectedActionIdx = null; selectedIndices = [];
+            log(`🔋 Điện ly ${comp}! +2 Electron & hoàn nguyên tố về tay.`, "text-purple-300");
+            render();
+        }
+
+        function executeDecompose() {
+            if (turnState !== 'player_action' || selectedActionIdx === null || playerActions[selectedActionIdx] !== "PHÂN RÃ" || selectedSlotIndex === null) return;
+            const comp = createdBonds[selectedSlotIndex];
+            if (!comp) return;
+
+            let req = BASE_COMPOUNDS[comp] || {H:2, O:1};
+            for (let e in req) { for (let c=0; c<req[e]; c++) playerElements.push(e); }
+            createdBonds.splice(selectedSlotIndex, 1);
+            playerActions.splice(selectedActionIdx, 1);
+
+            selectedSlotIndex = null; selectedActionIdx = null; selectedIndices = [];
+            log(`🔥 Phân rã ${comp} thành công.`, "text-amber-300");
+            render();
+        }
+
+        function executeDisplacement() {
+            if (turnState !== 'player_action' || selectedActionIdx === null || playerActions[selectedActionIdx] !== "THẾ NGUYÊN TỐ") return;
+            if (electronCount < 2) { log("Cần ít nhất 2 Electron!", "text-rose-400"); return; }
+            if (selectedIndices.length !== 1) { log("Chọn 1 nguyên tố chất thế!", "text-amber-400"); return; }
+            if (selectedOppSlotIndex === null || !opponentBonds[selectedOppSlotIndex]) { log("Chọn 1 liên kết của đối thủ!", "text-amber-400"); return; }
+            if (createdBonds.length >= 10) { log("Phòng thí nghiệm đã đầy!", "text-rose-400"); return; }
+
+            let myEl = playerElements[selectedIndices[0]];
+            let oppComp = opponentBonds[selectedOppSlotIndex];
+
+            if (oppComp === "CuSO4" && myEl === "Fe") {
+                electronCount -= 2;
+                playerElements.splice(selectedIndices[0], 1);
+                playerActions.splice(selectedActionIdx, 1);
+                opponentBonds.splice(selectedOppSlotIndex, 1);
+                opponentElements.push("Cu");
+                createdBonds.push("FeSO4");
+
+                selectedIndices = []; selectedActionIdx = null; selectedOppSlotIndex = null;
+                log(`⚡ Phản ứng thế thành công: Fe cướp CuSO4 thành FeSO4!`, "text-yellow-400 font-bold");
+                render();
+            } else {
+                log("Phản ứng thế không xảy ra giữa cặp chất này!", "text-rose-400");
+            }
+        }
+
+        function executeDiscard() {
+            if (turnState !== 'player_action') return;
+            if (selectedIndices.length !== 1) { log("Chọn đúng 1 lá nguyên tố rác để đánh!", "text-amber-400"); return; }
+
+            trashCard = playerElements[selectedIndices[0]];
+            playerElements.splice(selectedIndices[0], 1);
+            selectedIndices = []; selectedActionIdx = null; selectedSlotIndex = null; selectedOppSlotIndex = null;
+            
+            log(`Bạn đánh lá rác: [${trashCard}]. Lượt BOT bắt đầu.`, "text-stone-400");
+            turnState = 'ai_turn';
+            render();
+
+            let capturedSession = currentGameSession;
+            setTimeout(() => {
+                if (currentGameSession === capturedSession) {
+                    aiTurn();
+                }
+            }, 1000);
+        }
+
+        function executeWin() {
+            if (turnState !== 'player_action') { log("Chưa đến lúc Ù!", "text-amber-400"); return; }
+            if (createdBonds.length >= 10 && electronCount >= 10 && playerActions.includes("PHẢN ỨNG")) {
+                turnState = 'game_over';
+                alert("🎉 CHIẾN THẮNG! BẠN ĐÃ Ù HÓA HỌC THÀNH CÔNG!");
+                log("Ù HÓA HỌC! BẠN ĐÃ CHIẾN THẮNG TRẬN ĐẤU!", "text-yellow-400 font-bold");
+                render();
+            } else {
+                log("Chưa đủ điều kiện Ù (10 Liên kết + 10 Electron + Thẻ PHẢN ỨNG)!", "text-rose-400");
+            }
+        }
+
+        function aiTurn() {
+            if (turnState !== 'ai_turn') return;
+            if (singleDeck.length === 0) {
+                turnState = 'game_over';
+                log("Nọc đã cạn! Trận đấu kết thúc hòa.", "text-rose-400");
+                render();
+                return;
+            }
+
+            let card = singleDeck.pop();
+            if (card.type === 'element') opponentElements.push(card.value);
+            else opponentActions.push(card.value);
+
+            // BOT thông minh tự chế tạo hợp chất
+            if (opponentBonds.length < 10) {
+                let testPool = [...opponentElements];
+                if (testPool.includes("Cu") && testPool.includes("S") && testPool.filter(x=>x==="O").length >= 4) {
+                    ["Cu", "S", "O", "O", "O", "O"].forEach(e => opponentElements.splice(opponentElements.indexOf(e), 1));
+                    opponentBonds.push("CuSO4");
+                    log("🤖 BOT đã tự chế tạo thành công [CuSO4]!", "text-rose-400 font-bold");
+                } else if (testPool.filter(x=>x==="H").length >= 2 && testPool.includes("O")) {
+                    opponentElements.splice(opponentElements.indexOf("H"), 1);
+                    opponentElements.splice(opponentElements.indexOf("H"), 1);
+                    opponentElements.splice(opponentElements.indexOf("O"), 1);
+                    opponentBonds.push("H2O");
+                    log("🤖 BOT đã tự chế tạo thành công [H2O]!", "text-rose-400 font-bold");
+                }
+            }
+
+            if (opponentElements.length > 0) {
+                let rIdx = Math.floor(Math.random() * opponentElements.length);
+                trashCard = opponentElements[rIdx];
+                opponentElements.splice(rIdx, 1);
+                log(`🤖 BOT đánh ra lá rác: [${trashCard}]`, "text-rose-300");
+            }
+
+            turnState = 'player_draw';
+            render();
+        }
+
+        function buildHandbook() {
+            const hb = document.getElementById("handbook-content");
+            hb.innerHTML = "";
+            for (let c in BASE_COMPOUNDS) {
+                let req = []; for (let e in BASE_COMPOUNDS[c]) req.push(`${BASE_COMPOUNDS[c][e]}x ${e}`);
+                hb.innerHTML += `<div class="p-2 bg-stone-900 rounded-lg border border-stone-800 flex justify-between"><span class="font-bold text-amber-400">${c}</span><span class="text-stone-400">${req.join(" + ")}</span></div>`;
+            }
+            hb.innerHTML += `<div class="p-2 bg-stone-900 rounded-lg border border-stone-800 text-center text-amber-300">+ Hơn 5000+ tổ hợp Clorua, Sunfat, Cacbonat, Hiđroxit động tự sinh!</div>`;
+        }
+
+        function toggleHandbook() { document.getElementById("handbook-modal").classList.toggle("hidden"); }
+        function resetGame() { initGame(); }
+        initGame();
+    </script>
+</body>
+</html>
